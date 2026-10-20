@@ -14,6 +14,8 @@
 - 支持两个快捷追问和自由输入追问
 - 使用 `localStorage` 保存用户载入的会议与已划线 HTML
 - 保留知识图谱入口（当前为占位，下一阶段接入真实节点）
+- 左侧模型设置入口，可输入自己的 DeepSeek API Key
+- 配置 Key 后，解释请求会把当前会议全文一起交给 DeepSeek；没有 Key 时继续使用 Mock 演示模式
 
 ## 产品边界
 
@@ -62,11 +64,16 @@ git push -u origin main
 https://<你的用户名>.github.io/lexi-meeting-reader/
 ```
 
-## 接入真实 AI 时的安全要求
+## DeepSeek 1.0 与安全边界
 
-当前页面使用 Mock 解释，故可以直接部署到 GitHub Pages。
+当前页面支持两种模式：
 
-接入 DeepSeek、OpenAI 或其他模型时，**不要把 API Key 写入 `index.html` 或前端 JavaScript**。GitHub Pages 是纯静态托管，任何前端变量都会暴露给访问者。
+- 没有 Key：使用 Mock 解释，可以直接体验完整交互；
+- 在左侧“模型设置”输入 Key：调用 `https://api.deepseek.com/chat/completions`，模型会读取当前会议全文后解释选区。
+
+API Key 不会写入 `index.html` 或 GitHub 仓库。默认只保存在当前浏览器会话；只有勾选“在此浏览器记住 Key”时才会写入浏览器本地存储。不要在公共电脑上勾选，也不要把 Key 发给别人。
+
+当前直连模式适合个人本地测试，因为浏览器请求会暴露你自己的 Key。正式多人部署时，应改为服务端代理：
 
 推荐下一阶段使用：
 
@@ -94,7 +101,7 @@ POST /api/explain
 
 ## 下一步
 
-- 将 Mock 解释替换为真实模型接口
+- 将浏览器直连改为服务端 `/api/explain` 代理
 - 保存解释记录和追问对话
 - 用户主动点击“加入图谱”时才创建知识节点
 - 单独制作知识图谱页面，不侵入会议阅读主流程
