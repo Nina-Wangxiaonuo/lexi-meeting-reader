@@ -118,7 +118,6 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 .side-nav{display:flex;align-items:center;gap:9px;width:100%;padding:10px 10px;border-radius:10px;color:var(--ink-2);font-size:12px;text-align:left;transition:.18s}
 .side-nav:hover{background:rgba(255,255,255,.62);color:var(--ink)}
 .side-icon{font-size:17px;color:#d4738f;line-height:1}.side-arrow{margin-left:auto;color:#a8b0bd}.side-foot{margin-top:auto;padding:12px 9px 0;color:#a8b0bd;font:10px/1.7 var(--sans)}
-@media(min-width:901px){.topbar,.desk{margin-left:246px;margin-right:24px;max-width:1220px}}
 @media(max-width:900px){.sidebar{position:relative;left:auto;top:auto;bottom:auto;width:auto;margin:14px 14px 0;padding:12px;display:block;border-radius:14px}.side-brand{display:inline-flex;padding:4px 7px 12px}.side-new{width:auto;float:right;margin-top:0;padding:8px 10px}.side-label{clear:both;padding:12px 7px 6px}.archive-list{display:flex;flex-direction:row;overflow:auto;padding:0 2px 2px}.archive-item{min-width:160px}.side-divider{display:none}.side-nav{margin-top:7px;background:rgba(255,255,255,.48)}.side-foot{display:none}.topbar{padding-top:14px}.desk{padding-top:28px}}
 
 /* ============ 顶栏 ============ */
@@ -143,6 +142,10 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 .desk{
   max-width:1220px;margin:0 auto;padding:44px 24px 90px;
   display:grid;grid-template-columns:minmax(0,1fr) 398px;gap:30px;align-items:start;
+}
+/* 为固定左侧栏留出空间：必须写在 .topbar / .desk 默认 margin 之后 */
+@media(min-width:901px){
+  body .topbar,body .desk{margin-left:246px;margin-right:24px;max-width:1220px}
 }
 
 /* ---- 纸张 ---- */
@@ -442,9 +445,11 @@ body.s-torn .hl.is-active::before{
 .switch button.on{background:var(--ink);color:#fff}
 
 /* 响应式 */
-@media (max-width:1080px){
-  .desk{grid-template-columns:minmax(0,1fr) 350px;gap:22px}
+@media (max-width:1180px){
+  .desk{grid-template-columns:1fr}
+  .note{position:relative;top:0;transform:none;max-height:none;margin-top:6px}
   .sheet{padding:36px 32px}
+  h1.doc-title{font-size:32px}
 }
 @media (max-width:900px){
   .desk{grid-template-columns:1fr;padding-top:24px}
