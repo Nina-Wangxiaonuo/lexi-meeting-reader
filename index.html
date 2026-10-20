@@ -99,6 +99,28 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   border-radius:44% 56% 48% 52%/58% 44% 56% 42%;
 }
 
+
+/* ============ 左侧导航与会议存档 ============ */
+.sidebar{position:fixed;z-index:20;left:18px;top:18px;bottom:18px;width:204px;padding:20px 14px 16px;background:rgba(255,253,247,.72);border:1px solid rgba(255,255,255,.82);border-radius:20px;box-shadow:0 24px 50px -38px rgba(16,44,72,.5);backdrop-filter:blur(12px);display:flex;flex-direction:column}
+.side-brand{display:flex;align-items:center;gap:8px;padding:0 9px 20px;font-weight:700;font-size:13px;letter-spacing:.2em;color:var(--ink)}
+.side-brand-dot{width:9px;height:9px;border-radius:50%;background:var(--ink);display:block}
+.side-new{width:100%;padding:10px 11px;border-radius:10px;background:var(--ink);color:#fff;text-align:left;font-size:12px;font-weight:600;box-shadow:0 12px 20px -15px rgba(16,24,36,.8);transition:.18s}
+.side-new:hover{transform:translateY(-1px);background:#2a3340}
+.side-label{padding:25px 9px 8px;font-size:10px;letter-spacing:.14em;color:var(--ink-3);font-weight:700}
+.archive-list{display:flex;flex-direction:column;gap:4px;overflow:auto;min-height:0}
+.archive-item{position:relative;width:100%;padding:10px 10px;border:1px solid transparent;border-radius:10px;text-align:left;color:var(--ink-2);font:12px/1.45 var(--sans);cursor:pointer;transition:.18s}
+.archive-item:hover{background:rgba(255,255,255,.62);color:var(--ink)}
+.archive-item.active{background:#fffdf7;border-color:#eee4d2;color:var(--ink);box-shadow:0 7px 15px -13px rgba(16,44,72,.45)}
+.archive-item.active::before{content:"";position:absolute;left:-4px;top:13px;width:3px;height:16px;border-radius:3px;background:#d4738f}
+.archive-title{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.archive-date{display:block;margin-top:4px;color:#a8b0bd;font-size:10px}
+.side-divider{height:1px;background:rgba(204,194,178,.5);margin:16px 8px 12px}
+.side-nav{display:flex;align-items:center;gap:9px;width:100%;padding:10px 10px;border-radius:10px;color:var(--ink-2);font-size:12px;text-align:left;transition:.18s}
+.side-nav:hover{background:rgba(255,255,255,.62);color:var(--ink)}
+.side-icon{font-size:17px;color:#d4738f;line-height:1}.side-arrow{margin-left:auto;color:#a8b0bd}.side-foot{margin-top:auto;padding:12px 9px 0;color:#a8b0bd;font:10px/1.7 var(--sans)}
+@media(min-width:901px){.topbar,.desk{margin-left:246px;margin-right:24px;max-width:1220px}}
+@media(max-width:900px){.sidebar{position:relative;left:auto;top:auto;bottom:auto;width:auto;margin:14px 14px 0;padding:12px;display:block;border-radius:14px}.side-brand{display:inline-flex;padding:4px 7px 12px}.side-new{width:auto;float:right;margin-top:0;padding:8px 10px}.side-label{clear:both;padding:12px 7px 6px}.archive-list{display:flex;flex-direction:row;overflow:auto;padding:0 2px 2px}.archive-item{min-width:160px}.side-divider{display:none}.side-nav{margin-top:7px;background:rgba(255,255,255,.48)}.side-foot{display:none}.topbar{padding-top:14px}.desk{padding-top:28px}}
+
 /* ============ 顶栏 ============ */
 .topbar{
   max-width:1220px;margin:0 auto;padding:20px 24px 0;
@@ -517,11 +539,20 @@ body.s-torn .hl.is-active::before{
   <div class="torn t-yellow"></div>
 </div>
 
+<aside class="sidebar" id="sidebar" aria-label="LEXI 导航">
+  <div class="side-brand"><span class="side-brand-dot"></span><span>LEXI</span></div>
+  <button class="side-new" id="newMeetingSide">＋ 新会议纪要</button>
+  <div class="side-label">会议纪要</div>
+  <nav class="archive-list" id="meetingArchive" aria-label="已存档会议"></nav>
+  <div class="side-divider"></div>
+  <button class="side-nav" id="graphEntry"><span class="side-icon">◇</span><span>知识图谱</span><span class="side-arrow">↗</span></button>
+  <div class="side-foot">选中的解释和图谱节点<br>只在你主动确认后保存</div>
+</aside>
+
 <header class="topbar">
   <span class="brand"><i></i>LEXI</span>
   <span class="hint">会议纪要 · 划线体验</span>
   <button class="ghost-pill" id="newMeeting">＋ 新会议</button><span class="spacer"></span>
-  <button class="ghost-pill" id="graphEntry">知识图谱 ↗</button>
 </header>
 
 <main class="desk">
@@ -529,12 +560,6 @@ body.s-torn .hl.is-active::before{
   <article class="sheet">
     <div class="sheet-under"></div>
     <div class="sheet-under-2"></div>
-
-    <div class="sticky">
-      <span class="pin"></span>
-      <b>这场会里有 6 个新词</b>
-      先点你觉得最陌生的那个，剩下的顺藤摸瓜就好。
-    </div>
 
     <div class="eyebrow">
       <span>会议纪要</span><span class="dot"></span><span id="meetingDate">2026 / 10 / 20 · 10:30</span>
@@ -720,7 +745,7 @@ function explainSelection(){
   document.getElementById('selectionMeta').textContent='已解释 1 个选区 · 可以继续选择';
   renderExplanation(data);
   toast('已根据这场会议的上下文生成解释');
-  saveMeetingState();
+  saveCurrentToArchive();
 }
 document.getElementById('explainSelection').addEventListener('click',explainSelection);
 document.getElementById('quickGraph').addEventListener('click',()=>{ explainSelection(); setTimeout(()=>toast('解释后可以从卡片右上角加入知识图谱'),250); });
@@ -735,12 +760,15 @@ document.querySelectorAll('.qchip').forEach(b=>b.addEventListener('click',()=>an
 document.getElementById('askForm').addEventListener('submit',e=>{e.preventDefault();const v=document.getElementById('askInput').value.trim();if(v){document.getElementById('askInput').value='';answer(v);}});
 function answer(question){ if(!currentExplanation)return; const text=/例子|业务/.test(question)?currentExplanation.demo:currentExplanation.simple; document.getElementById('replyWrap').innerHTML=`<div class="reply">${escapeHtml(text)}<br><br><span style="color:#8b94a3">（当前是 Mock 解释；接入模型后会携带完整对话上下文。）</span></div>`; }
 
-// 会议输入与本地保存
+// 会议输入与本地存档
 const modal=document.getElementById('meetingModal');
+const ARCHIVE_KEY='lexi-archives';
+let activeMeetingId=null;
 function openModal(){modal.hidden=false;document.getElementById('newContent').focus();}
 function closeModal(){modal.hidden=true;}
 document.getElementById('newMeetingInline').addEventListener('click',openModal);
 document.getElementById('newMeeting').addEventListener('click',openModal);
+document.getElementById('newMeetingSide').addEventListener('click',openModal);
 document.getElementById('closeModal').addEventListener('click',closeModal);
 document.getElementById('cancelModal').addEventListener('click',closeModal);
 modal.addEventListener('click',e=>{if(e.target===modal)closeModal();});
@@ -748,29 +776,55 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 document.getElementById('loadMeeting').addEventListener('click',()=>{
   const raw=document.getElementById('newContent').value.trim(); if(!raw){toast('先粘贴一段会议记录');return;}
   const title=document.getElementById('newTitle').value.trim() || '新的会议纪要';
-  loadMeeting(title,raw); closeModal(); toast('会议纪要已载入，选中你不懂的地方开始');
+  loadMeeting(title,raw); closeModal(); toast('会议纪要已存档，选中你不懂的地方开始');
 });
-function renderMeeting(title,raw){
+function archiveDate(value){return new Intl.DateTimeFormat('zh-CN',{month:'numeric',day:'numeric'}).format(new Date(value));}
+function defaultRecord(){return {id:'meeting-demo',title:'这一版 Agent 的架构',raw:'陈：这周我们主要收口一下 Agent 的架构。用户的问题进来之后，先过一个 router 判断意图，需要查资料的走 RAG 这条链路。\n\n具体做法是先用 embedding 把 query 和文档块都转成向量，丢进向量数据库里做召回，取回 top 50 之后再拿 reranker 精排一下，最后只留 5 条塞进上下文。这块上周线上 hallucination 有点多，主要就是召回质量的问题。\n\n李：工具调用这边还是走 function calling，但要注意超时和幂等，同一个请求重试不能重复扣款。\n\n陈：对。另外模型侧这周在做 KV cache 的复用，长上下文的成本能压下来差不多三成。至于 fine-tuning，先不着急，prompt 还没调稳之前别动模型，不然我们连问题是出在数据还是模型上都分不清。',createdAt:Date.now(),updatedAt:Date.now()};}
+function getArchives(){
+  try{let list=JSON.parse(localStorage.getItem(ARCHIVE_KEY)||'null');if(Array.isArray(list)&&list.length)return list;
+    const legacy=JSON.parse(localStorage.getItem('lexi-meeting')||'null');if(legacy&&legacy.raw)return [{...legacy,id:'meeting-'+Date.now(),createdAt:Date.now(),updatedAt:Date.now()}];
+  }catch{}
+  return [defaultRecord()];
+}
+function saveArchives(list){localStorage.setItem(ARCHIVE_KEY,JSON.stringify(list));}
+function renderArchive(){
+  const list=getArchives();
+  document.getElementById('meetingArchive').innerHTML=list.map(item=>`<button class="archive-item ${item.id===activeMeetingId?'active':''}" data-id="${escapeHtml(item.id)}"><span class="archive-title">${escapeHtml(item.title)}</span><span class="archive-date">${archiveDate(item.updatedAt||item.createdAt)}</span></button>`).join('');
+  document.querySelectorAll('.archive-item').forEach(button=>button.addEventListener('click',()=>openArchive(button.dataset.id)));
+}
+function saveCurrentToArchive(){
+  if(!activeMeetingId)return;
+  const list=getArchives();const item=list.find(x=>x.id===activeMeetingId);if(!item)return;
+  item.html=content.innerHTML;item.title=document.getElementById('meetingTitle').textContent.replace(/\s+/g,' ').trim();item.updatedAt=Date.now();saveArchives(list);
+}
+function renderRecord(record){
+  activeMeetingId=record.id;
+  if(record.html) content.innerHTML=record.html; else renderMeeting(record.title,record.raw,false);
+  document.getElementById('meetingTitle').textContent=record.title;
+  document.getElementById('meetingDate').textContent=archiveDate(record.updatedAt||record.createdAt)+' · 已存档';
+  document.getElementById('meetingMeta').textContent='会议纪要';
+  document.getElementById('selectionMeta').textContent='选中你不懂的地方，再点解释';
+  panelEmpty.hidden=false;panelExplained.hidden=true;currentExplanation=null;hideToolbar();renderArchive();
+}
+function renderMeeting(title,raw,reset=true){
   document.getElementById('meetingTitle').textContent=title;
   document.getElementById('meetingDate').textContent='刚刚载入 · 会议纪要';
-  document.getElementById('meetingMeta').textContent='用户粘贴内容';
+  document.getElementById('meetingMeta').textContent='会议纪要';
   document.getElementById('selectionMeta').textContent='选中你不懂的地方，再点解释';
-  const html=raw.split(/\n+/).filter(Boolean).map(line=>{
-    const safe=escapeHtml(line.trim());
-    return `<p>${safe.replace(/^([^：:]{1,8}[：:])/, '<span class="spk">$1</span>')}</p>`;
-  }).join('');
+  const html=raw.split(/\n+/).filter(Boolean).map(line=>{const safe=escapeHtml(line.trim());return `<p>${safe.replace(/^([^：:]{1,8}[：:])/, '<span class="spk">$1</span>')}</p>`;}).join('');
   content.innerHTML=html;
-  panelEmpty.hidden=false;panelExplained.hidden=true;currentExplanation=null;hideToolbar();
+  if(reset){panelEmpty.hidden=false;panelExplained.hidden=true;currentExplanation=null;hideToolbar();}
 }
-function loadMeeting(title,raw){renderMeeting(title,raw);localStorage.setItem('lexi-meeting',JSON.stringify({title,raw}));localStorage.removeItem('lexi-annotations');}
-function saveMeetingState(){
-  const saved=localStorage.getItem('lexi-meeting');
-  if(saved){const o=JSON.parse(saved);localStorage.setItem('lexi-meeting',JSON.stringify({...o,html:content.innerHTML}));}
+function loadMeeting(title,raw){
+  saveCurrentToArchive();
+  const record={id:'meeting-'+Date.now(),title,raw,createdAt:Date.now(),updatedAt:Date.now()};
+  const list=getArchives();list.unshift(record);saveArchives(list);renderRecord(record);
 }
-function restore(){
-  const saved=localStorage.getItem('lexi-meeting'); if(!saved)return;
-  try{const o=JSON.parse(saved);if(o.html){document.getElementById('meetingTitle').textContent=o.title;content.innerHTML=o.html;document.getElementById('selectionMeta').textContent='有已解释选区 · 继续点选内容';}else if(o.raw)renderMeeting(o.title,o.raw);}catch{}
+function openArchive(id){
+  saveCurrentToArchive();
+  const record=getArchives().find(x=>x.id===id);if(record){renderRecord(record);toast(`已打开「${record.title}」`);}
 }
+function restore(){const list=getArchives();saveArchives(list);const record=list.find(x=>x.id===activeMeetingId)||list[0];renderRecord(record);}
 restore();
 
 document.getElementById('graphEntry').addEventListener('click',()=>toast('知识图谱入口已保留，下一步接入你的已解释知识点'));
