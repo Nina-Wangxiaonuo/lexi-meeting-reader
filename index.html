@@ -124,6 +124,8 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 .topbar{
   max-width:1220px;margin:0 auto;padding:20px 24px 0;
   display:flex;align-items:center;gap:14px;
+  position:fixed;top:0;z-index:40;
+  background:rgba(234,245,253,.78);backdrop-filter:blur(12px);
 }
 .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:13px;letter-spacing:.2em}
 .brand i{width:10px;height:10px;border-radius:50%;background:var(--ink);display:block}
@@ -145,7 +147,8 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 }
 /* 为固定左侧栏留出空间：必须写在 .topbar / .desk 默认 margin 之后 */
 @media(min-width:901px){
-  body .topbar,body .desk{margin-left:246px;margin-right:24px;max-width:1220px}
+  body .topbar{left:246px;right:24px;max-width:none;margin:0;padding:15px 24px 14px}
+  body .desk{margin-left:246px;margin-right:24px;max-width:1220px;padding-top:104px}
 }
 
 /* ---- 纸张 ---- */
@@ -205,6 +208,7 @@ h1.doc-title{
 }
 .doc-meta{display:flex;align-items:center;gap:14px;font-size:11.5px;color:var(--ink-3);flex-wrap:wrap}
 .avs{display:flex}
+.avs[hidden]{display:none}
 .avs span{
   width:21px;height:21px;border-radius:50%;border:2px solid var(--paper);margin-left:-6px;
   font-size:9.5px;display:grid;place-items:center;color:#27303c;font-weight:600;
@@ -220,8 +224,9 @@ h1.doc-title{
   font-family:var(--serif);
   font-size:16.5px;line-height:2.02;color:#20252e;
   margin:0 0 22px;letter-spacing:.005em;
-  padding-left:2.4em;text-indent:-2.4em;
+  padding-left:0;text-indent:0;
 }
+.doc p.speaker-line{padding-left:2.4em;text-indent:-2.4em}
 .doc p:last-of-type{margin-bottom:0}
 .spk{font-family:var(--sans);font-size:.86em;font-weight:600;color:#7c8798;letter-spacing:.02em;margin-right:.15em}
 
@@ -519,6 +524,11 @@ body.s-torn .hl.is-active::before{
 .model-actions{display:flex;align-items:center;gap:8px;margin-top:15px}.model-actions>span{margin-right:auto;color:#9aa3b0;font-size:10.5px}.model-actions .ghost-pill{padding:8px 12px}.model-actions .dark-pill{padding:9px 14px}.model-actions button:disabled{opacity:.55;cursor:wait}
 .selection-toolbar button:disabled{opacity:.68;cursor:wait}
 @media(max-width:900px){.selection-toolbar{position:fixed}.selection-hint button{margin-left:0}.selection-hint{flex-wrap:wrap}.selection-hint span:nth-child(2){flex:1}.meeting-dialog,.model-dialog{padding:24px 20px}.modal-actions,.model-actions{flex-wrap:wrap}.modal-actions span,.model-actions>span{width:100%;margin-bottom:4px}.model-field{grid-template-columns:1fr;gap:5px}}
+@media(max-width:900px){
+  body .topbar{left:0;right:0;max-width:none;margin:0;padding:12px 14px;background:rgba(234,245,253,.9)}
+  body .sidebar{margin-top:72px}
+  body .desk{padding-top:28px}
+}
 </style>
 </head>
 <body class="s-marker">
@@ -583,11 +593,7 @@ body.s-torn .hl.is-active::before{
     <h1 class="doc-title" id="meetingTitle">这一版 Agent 的架构，<br>我们先对齐一下</h1>
 
     <div class="doc-meta">
-      <div class="avs">
-        <span style="background:#ffd9e1">陈</span>
-        <span style="background:#d9efdd">李</span>
-        <span style="background:#dbeafb">我</span>
-      </div>
+      <div class="avs" id="participantAvatars" aria-label="参会人"></div>
       <span id="meetingMeta">时长 47 分钟</span>
       <span>·</span>
       <span id="selectionMeta">选中你不懂的地方，再点解释</span>
@@ -930,9 +936,23 @@ function saveCurrentToArchive(){
   const list=getArchives();const item=list.find(x=>x.id===activeMeetingId);if(!item)return;
   item.html=content.innerHTML;item.title=document.getElementById('meetingTitle').textContent.replace(/\s+/g,' ').trim();item.updatedAt=Date.now();saveArchives(list);
 }
+function updateParticipants(){
+  const names=[];
+  content.querySelectorAll('p').forEach(p=>{
+    const speaker=p.querySelector('.spk');
+    p.classList.toggle('speaker-line',Boolean(speaker));
+    if(speaker){const name=speaker.textContent.replace(/[：:]\s*$/,'').trim();if(name&&!names.includes(name))names.push(name);}
+  });
+  const avatars=document.getElementById('participantAvatars');
+  const colors=['#ffd9e1','#d9efdd','#dbeafb','#ffe7ad','#e7ddfb'];
+  avatars.innerHTML=names.map((name,i)=>`<span title="${escapeHtml(name)}" style="background:${colors[i%colors.length]}">${escapeHtml(name.slice(0,1))}</span>`).join('');
+  avatars.hidden=names.length===0;
+  avatars.setAttribute('aria-label',names.length?`参会人：${names.join('、')}`:'无明确参会人信息');
+}
 function renderRecord(record){
   activeMeetingId=record.id;
   if(record.html) content.innerHTML=record.html; else renderMeeting(record.title,record.raw,false);
+  updateParticipants();
   document.getElementById('meetingTitle').textContent=record.title;
   document.getElementById('meetingDate').textContent=archiveDate(record.updatedAt||record.createdAt)+' · 已存档';
   document.getElementById('meetingMeta').textContent='会议纪要';
@@ -946,6 +966,7 @@ function renderMeeting(title,raw,reset=true){
   document.getElementById('selectionMeta').textContent='选中你不懂的地方，再点解释';
   const html=raw.split(/\n+/).filter(Boolean).map(line=>{const safe=escapeHtml(line.trim());return `<p>${safe.replace(/^([^：:]{1,8}[：:])/, '<span class="spk">$1</span>')}</p>`;}).join('');
   content.innerHTML=html;
+  updateParticipants();
   if(reset){panelEmpty.hidden=false;panelExplained.hidden=true;currentExplanation=null;hideToolbar();}
 }
 function loadMeeting(title,raw){
