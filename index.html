@@ -414,6 +414,7 @@ body.s-torn .hl.is-active::before{
   background:#fdfaf2;color:#6b7482;transition:.16s;
 }
 .qchip:hover{background:#fff;border-color:rgba(20,32,48,.3);color:var(--ink)}
+.search-toggle{display:flex;align-items:center;gap:7px;margin:8px 0 10px;color:#7d8794;font-size:11px;cursor:pointer}.search-toggle input{position:absolute;opacity:0;pointer-events:none}.toggle-track{position:relative;width:25px;height:14px;border-radius:999px;background:#d7dce1;transition:.2s}.toggle-track::after{content:"";position:absolute;left:2px;top:2px;width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(20,30,40,.25);transition:.2s}.search-toggle input:checked+.toggle-track{background:#7ba7d6}.search-toggle input:checked+.toggle-track::after{transform:translateX(11px)}.search-toggle small{margin-left:auto;color:#a8b0bd;font-size:10px}.search-toggle input:checked~small{color:#5c83aa}
 .ask-row{display:flex;gap:7px}
 .ask-row input{
   flex:1;min-width:0;border:1px solid var(--line);background:#fdfaf2;border-radius:9px;
@@ -430,6 +431,15 @@ body.s-torn .hl.is-active::before{
   background:#fbf7ec;border:1px solid #f1e9d9;border-radius:10px;padding:10px 12px;
   animation:rise .32s cubic-bezier(.2,.8,.3,1) both;
 }
+.chat-history{display:flex;flex-direction:column;gap:9px;margin-top:12px;max-height:360px;overflow:auto;padding:2px 2px 4px;scroll-behavior:smooth}
+.chat-message{max-width:91%;font-size:12.5px;line-height:1.75;padding:9px 11px;border-radius:12px;white-space:normal;overflow-wrap:anywhere;animation:rise .25s ease both}
+.chat-message.user{align-self:flex-end;background:#202733;color:#fff;border-bottom-right-radius:4px}
+.chat-message.assistant{align-self:flex-start;background:#fbf7ec;border:1px solid #f1e9d9;color:#3a424f;border-bottom-left-radius:4px}
+.chat-message.loading{color:#8b94a3;font-style:italic}
+.chat-role{display:block;font-size:9px;letter-spacing:.08em;opacity:.62;margin-bottom:3px;text-transform:uppercase}
+.chat-sources{margin-top:8px;padding-top:7px;border-top:1px dashed rgba(90,100,116,.2);display:flex;flex-direction:column;gap:4px}
+.chat-sources a{color:#547ca3;text-decoration:none;font-size:10.5px;line-height:1.45}.chat-sources a:hover{text-decoration:underline}
+.chat-empty{margin:10px 0 0;text-align:center;color:#a8b0bd;font-size:10.5px}
 @keyframes rise{from{transform:translateY(5px);opacity:.4}to{transform:none;opacity:1}}
 
 /* 样式切换器 */
@@ -651,6 +661,7 @@ body.s-torn .hl.is-active::before{
             <button class="qchip" data-q="换个更简单的说法">换个更简单的说法</button>
             <button class="qchip" data-q="举个我们业务的例子">举个我们业务的例子</button>
           </div>
+          <label class="search-toggle"><input id="searchToggle" type="checkbox"><span class="toggle-track"></span><span>允许联网搜索</span><small id="searchState">当前只依据会议</small></label>
           <form class="ask-row" id="askForm">
             <input id="askInput" placeholder="还是没懂？继续问…" autocomplete="off">
             <button type="submit" aria-label="发送"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
@@ -690,8 +701,9 @@ body.s-torn .hl.is-active::before{
     <label class="model-field"><span>提供商</span><select id="modelProvider"><option>DeepSeek</option></select></label>
     <label class="model-field"><span>模型</span><select id="modelName"><option value="deepseek-chat">deepseek-chat</option></select></label>
     <label class="model-field"><span>API Key</span><input id="modelKey" type="password" placeholder="sk-…" autocomplete="off"></label>
+    <label class="model-field"><span>搜索代理</span><input id="searchUrl" type="url" placeholder="可选：你的 /search 服务地址" autocomplete="off"></label>
     <label class="remember-key"><input id="rememberKey" type="checkbox">在此浏览器记住 Key（不推荐在公共电脑使用）</label>
-    <div class="model-warning">解释请求会把当前会议全文发送给 DeepSeek。请不要粘贴不适合发送到第三方模型的敏感内容。</div>
+    <div class="model-warning">解释请求会把当前会议全文发送给 DeepSeek。联网搜索需要你自己的服务端搜索代理；不会把 DeepSeek Key 直接当作搜索权限。</div>
     <div class="model-actions"><span id="modelStatus">当前为演示模式</span><button class="ghost-pill" id="testModel">测试连接</button><button class="dark-pill" id="saveModel">保存设置</button></div>
   </div>
 </div>
@@ -714,7 +726,7 @@ let pendingRange = null;
 let pendingText = '';
 let currentExplanation = null;
 let toastTimer;
-let modelSettings = {provider:'DeepSeek', model:'deepseek-chat', apiKey:'', remember:false, baseUrl:'https://api.deepseek.com'};
+let modelSettings = {provider:'DeepSeek', model:'deepseek-chat', apiKey:'', remember:false, searchUrl:'', baseUrl:'https://api.deepseek.com'};
 let modelRequestInFlight = false;
 const MODEL_SETTINGS_KEY='lexi-model-settings';
 const LEXI_SYSTEM_PROMPT = `你是 LEXI 的会议纪要解释助手。
@@ -756,6 +768,7 @@ function openModelModal(){
   document.getElementById('modelProvider').value=modelSettings.provider;
   document.getElementById('modelName').value=modelSettings.model;
   document.getElementById('modelKey').value=modelSettings.apiKey;
+  document.getElementById('searchUrl').value=modelSettings.searchUrl||'';
   document.getElementById('rememberKey').checked=Boolean(modelSettings.remember);
   updateModelStatus(); document.getElementById('modelModal').hidden=false; document.getElementById('modelKey').focus();
 }
@@ -764,9 +777,10 @@ function saveModelFromForm(){
   const key=document.getElementById('modelKey').value.trim();
   modelSettings.provider=document.getElementById('modelProvider').value;
   modelSettings.model=document.getElementById('modelName').value;
+  modelSettings.searchUrl=document.getElementById('searchUrl').value.trim();
   modelSettings.remember=document.getElementById('rememberKey').checked;
   modelSettings.apiKey=key;
-  localStorage.setItem(MODEL_SETTINGS_KEY,JSON.stringify({provider:modelSettings.provider,model:modelSettings.model,remember:modelSettings.remember}));
+  localStorage.setItem(MODEL_SETTINGS_KEY,JSON.stringify({provider:modelSettings.provider,model:modelSettings.model,searchUrl:modelSettings.searchUrl,remember:modelSettings.remember}));
   sessionStorage.removeItem('lexi-deepseek-key');localStorage.removeItem('lexi-deepseek-key');
   if(key)(modelSettings.remember?localStorage:sessionStorage).setItem('lexi-deepseek-key',key);
   updateModelStatus(); toast(key?'DeepSeek 已配置，下一次解释会读取会议全文':'已切回演示模式');
@@ -841,8 +855,29 @@ function markRange(range, id){
   catch{ mark.textContent=pendingText; range.deleteContents(); range.insertNode(mark); }
   return mark;
 }
-function renderExplanation(data){
-  currentExplanation=data; panelEmpty.hidden=true; panelExplained.hidden=false;
+function makeSelectionKey(text,context){return `${text}::${context.slice(0,240)}`;}
+let chatHistory=[];
+function renderChatHistory(){
+  const wrap=document.getElementById('replyWrap');
+  if(!chatHistory.length){wrap.innerHTML='<div class="chat-empty">继续追问后，完整对话会保留在这里</div>';return;}
+  wrap.innerHTML=`<div class="chat-history">${chatHistory.map(message=>{
+    const role=message.role==='user'?'你':'LEXI';
+    const text=escapeHtml(message.content||'').replace(/\n/g,'<br>');
+    const sources=message.sources?.length?`<div class="chat-sources">${message.sources.map(s=>`<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.title||s.url)}</a>`).join('')}</div>`:'';
+    return `<div class="chat-message ${message.role}"><span class="chat-role">${role}</span>${text}${sources}</div>`;
+  }).join('')}</div>`;
+  const history=wrap.querySelector('.chat-history');if(history)history.scrollTop=history.scrollHeight;
+}
+function getSavedChat(key){
+  try{const item=getArchives().find(x=>x.id===activeMeetingId);return item?.chats?.[key]||[];}catch{return[];}
+}
+function saveChat(){
+  if(!activeMeetingId||!currentExplanation?.selectionKey)return;
+  const list=getArchives(),item=list.find(x=>x.id===activeMeetingId);if(!item)return;
+  item.chats=item.chats||{};item.chats[currentExplanation.selectionKey]=chatHistory;item.updatedAt=Date.now();saveArchives(list);renderArchive();
+}
+function renderExplanation(data,history){
+  currentExplanation=data; chatHistory=history||[]; panelEmpty.hidden=true; panelExplained.hidden=false;
   document.getElementById('termName').textContent=data.name;
   document.getElementById('termEn').textContent=data.en;
   document.getElementById('termTags').innerHTML=data.tags.map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join('');
@@ -852,7 +887,8 @@ function renderExplanation(data){
   document.getElementById('cSteps').innerHTML=data.steps.map(s=>`<li>${escapeHtml(s)}</li>`).join('');
   document.getElementById('cContext').textContent=data.context;
   document.getElementById('cRels').innerHTML=data.rel.map(r=>`<button class="rel" data-term-link="${escapeHtml(r)}">${escapeHtml(r)}</button>`).join('');
-  document.getElementById('replyWrap').innerHTML='';
+  renderChatHistory();
+  const searchToggle=document.getElementById('searchToggle');if(searchToggle){searchToggle.checked=false;document.getElementById('searchState').textContent='当前只依据会议';}
   document.querySelector('.note').setAttribute('data-lv','1');
   document.querySelector('.note-scroll').scrollTop=0;
 }
@@ -863,11 +899,11 @@ async function explainSelection(){
   modelRequestInFlight=true;button.disabled=true;button.textContent=modelSettings.apiKey?'正在读全文…':'生成演示解释…';
   try{
     const data=modelSettings.apiKey ? await explainWithDeepSeek(text,context) : {...getMock(text,context),source:'mock'};
-    data.selected=text;
+    data.selected=text;data.selectionKey=makeSelectionKey(text,context);
     try{markRange(range,id)}catch{}
     hideToolbar();
     document.getElementById('selectionMeta').textContent='已解释 1 个选区 · 可以继续选择';
-    renderExplanation(data);saveCurrentToArchive();
+    renderExplanation(data,getSavedChat(data.selectionKey));saveCurrentToArchive();
     toast(modelSettings.apiKey?'DeepSeek 已依据会议全文完成解释':'当前为演示模式；在模型设置中输入 Key 可读取全文');
     return true;
   }catch(error){
@@ -878,25 +914,52 @@ async function explainSelection(){
 document.getElementById('explainSelection').addEventListener('click',explainSelection);
 document.getElementById('quickGraph').addEventListener('click',async()=>{const ok=await explainSelection();if(ok)setTimeout(()=>toast('解释完成后，可从卡片右上角加入知识图谱'),250);});
 
-content.addEventListener('click',e=>{ const mark=e.target.closest('.user-mark'); if(!mark) return; const text=mark.textContent.trim(); const data=getMock(text,rangeContextFromMark(mark)); renderExplanation({...data,selected:text}); });
+content.addEventListener('click',e=>{ const mark=e.target.closest('.user-mark'); if(!mark) return; const text=mark.textContent.trim(),context=rangeContextFromMark(mark),key=makeSelectionKey(text,context); const saved=getSavedExplanation(key),data=saved||getMock(text,context);data.selectionKey=key;renderExplanation({...data,selected:text},getSavedChat(key)); });
 content.addEventListener('keydown',e=>{ if(e.key==='Enter' && e.target.classList.contains('user-mark')) e.target.click(); });
 function rangeContextFromMark(mark){ const p=mark.closest('p'); return p ? p.textContent.trim() : mark.textContent; }
 
 document.getElementById('graphAdd').addEventListener('click',()=>toast('已保留到知识图谱入口，下一步接入节点保存')); 
-document.getElementById('cRels').addEventListener('click',e=>{const b=e.target.closest('[data-term-link]');if(b){const d=getMock(b.dataset.termLink,rangeContextFromMark(document.querySelector('.user-mark')||content));renderExplanation({...d,selected:b.dataset.termLink});}});
+document.getElementById('cRels').addEventListener('click',e=>{const b=e.target.closest('[data-term-link]');if(b){const context=rangeContextFromMark(document.querySelector('.user-mark')||content),key=makeSelectionKey(b.dataset.termLink,context),saved=getSavedExplanation(key),d=saved||getMock(b.dataset.termLink,context);d.selectionKey=key;renderExplanation({...d,selected:b.dataset.termLink},getSavedChat(key));}});
 document.querySelectorAll('.qchip').forEach(b=>b.addEventListener('click',()=>answer(b.dataset.q)));
+document.getElementById('searchToggle').addEventListener('change',e=>{
+  const state=document.getElementById('searchState');
+  if(e.target.checked&&!modelSettings.apiKey){e.target.checked=false;state.textContent='当前只依据会议';toast('联网问答需要先配置 DeepSeek Key');openModelModal();return;}
+  if(e.target.checked&&!modelSettings.searchUrl){e.target.checked=false;state.textContent='搜索服务未配置';toast('请先在模型设置中填写搜索代理地址');openModelModal();return;}
+  state.textContent=e.target.checked?'本轮允许搜索':'当前只依据会议';
+});
 document.getElementById('askForm').addEventListener('submit',e=>{e.preventDefault();const v=document.getElementById('askInput').value.trim();if(v){document.getElementById('askInput').value='';answer(v);}});
+async function searchWeb(query){
+  if(!modelSettings.searchUrl)throw new Error('联网搜索服务尚未配置，请在模型设置中填写搜索代理地址');
+  const response=await fetch(modelSettings.searchUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query,selectedText:currentExplanation?.selected||'',meetingTitle:document.getElementById('meetingTitle').textContent})});
+  const body=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(body.error||`搜索服务请求失败（${response.status}）`);
+  const results=Array.isArray(body.results)?body.results:(Array.isArray(body.data)?body.data:[]);
+  return results.slice(0,5).map(item=>({title:item.title||item.name||item.url||'搜索结果',url:item.url||item.link||'',snippet:item.snippet||item.description||''})).filter(item=>item.url);
+}
+function renderChatLoading(){
+  const history=document.querySelector('#replyWrap .chat-history');if(history){history.insertAdjacentHTML('beforeend','<div class="chat-message assistant loading"><span class="chat-role">LEXI</span>正在结合会议全文思考…</div>');history.scrollTop=history.scrollHeight;}
+}
 async function answer(question){
   if(!currentExplanation)return;
-  if(!modelSettings.apiKey){const text=/例子|业务/.test(question)?currentExplanation.demo:currentExplanation.simple;document.getElementById('replyWrap').innerHTML=`<div class="reply">${escapeHtml(text)}<br><br><span style="color:#8b94a3">（当前是 Mock 解释；配置 DeepSeek 后会携带完整会议全文。）</span></div>`;return;}
-  const replyWrap=document.getElementById('replyWrap');replyWrap.innerHTML='<div class="reply">正在结合会议全文思考…</div>';
+  chatHistory.push({role:'user',content:question});renderChatHistory();
+  if(!modelSettings.apiKey){
+    const text=/例子|业务/.test(question)?currentExplanation.demo:currentExplanation.simple;
+    chatHistory.push({role:'assistant',content:text+'\n\n（当前是 Mock 解释；配置 DeepSeek 后会保留完整多轮对话。）'});saveChat();renderChatHistory();return;
+  }
+  chatHistory.push({role:'assistant',content:'正在结合会议全文思考…',loading:true});renderChatHistory();
+  let sources=[];
   try{
+    if(document.getElementById('searchToggle').checked)sources=await searchWeb(question);
     const fullText=content.innerText.trim();
-    const prompt=`继续解释同一个会议选区。只依据会议全文回答，不要补充文本没有提供的事实。\n\n【会议全文】\n---\n${fullText}\n---\n\n【当前选区】\n${currentExplanation.selected}\n\n【已有解释】\n${currentExplanation.context}\n\n【用户追问】\n${question}`;
-    const body=await callDeepSeek([{role:'system',content:LEXI_SYSTEM_PROMPT+'\n\n这是追问环节：直接回答用户问题，不要重新输出 JSON。'}, {role:'user',content:prompt}],false);
+    const historyText=chatHistory.filter(m=>!m.loading).map(m=>`${m.role==='user'?'用户':'助手'}：${m.content}`).join('\n');
+    const searchText=sources.length?`\n\n【联网搜索补充】\n${sources.map(s=>`标题：${s.title}\n摘要：${s.snippet}\n链接：${s.url}`).join('\n\n')}\n\n请明确区分搜索补充和会议原文，不要把搜索内容说成会议中已经发生的事实。`:'';
+    const prompt=`继续解释同一个会议选区。会议全文是主要事实来源，只在用户打开联网搜索后参考搜索补充；如果两者冲突，明确指出，不要擅自合并。\n\n【会议全文】\n---\n${fullText}\n---\n\n【当前选区】\n${currentExplanation.selected}\n\n【已有解释】\n${currentExplanation.context}\n\n【对话历史】\n${historyText}${searchText}\n\n请直接回答用户最新的问题，不要重新输出 JSON。`;
+    const body=await callDeepSeek([{role:'system',content:LEXI_SYSTEM_PROMPT+'\n\n这是追问环节：保持多轮上下文，直接回答用户问题。'}, {role:'user',content:prompt}],false);
     const text=body.choices?.[0]?.message?.content?.trim();if(!text)throw new Error('模型没有返回追问内容');
-    replyWrap.innerHTML=`<div class="reply">${escapeHtml(text).replace(/\n/g,'<br>')}</div>`;
-  }catch(error){replyWrap.innerHTML='';toast(error.message||'追问失败，请稍后再试');}
+    chatHistory.pop();chatHistory.push({role:'assistant',content:text,sources});saveChat();renderChatHistory();
+  }catch(error){
+    chatHistory.pop();chatHistory.push({role:'assistant',content:`本轮没有完成：${error.message}`});saveChat();renderChatHistory();toast(error.message||'追问失败，请稍后再试');
+  }
 }
 
 // 会议输入与本地存档
@@ -931,10 +994,15 @@ function renderArchive(){
   document.getElementById('meetingArchive').innerHTML=list.map(item=>`<button class="archive-item ${item.id===activeMeetingId?'active':''}" data-id="${escapeHtml(item.id)}"><span class="archive-title">${escapeHtml(item.title)}</span><span class="archive-date">${archiveDate(item.updatedAt||item.createdAt)}</span></button>`).join('');
   document.querySelectorAll('.archive-item').forEach(button=>button.addEventListener('click',()=>openArchive(button.dataset.id)));
 }
+function getSavedExplanation(key){
+  try{const item=getArchives().find(x=>x.id===activeMeetingId);return item?.explanations?.[key]||null;}catch{return null;}
+}
 function saveCurrentToArchive(){
   if(!activeMeetingId)return;
   const list=getArchives();const item=list.find(x=>x.id===activeMeetingId);if(!item)return;
-  item.html=content.innerHTML;item.title=document.getElementById('meetingTitle').textContent.replace(/\s+/g,' ').trim();item.updatedAt=Date.now();saveArchives(list);
+  item.html=content.innerHTML;item.title=document.getElementById('meetingTitle').textContent.replace(/\s+/g,' ').trim();item.updatedAt=Date.now();
+  if(currentExplanation?.selectionKey){item.explanations=item.explanations||{};item.explanations[currentExplanation.selectionKey]=currentExplanation;}
+  saveArchives(list);
 }
 function updateParticipants(){
   const names=[];
